@@ -1,5 +1,8 @@
-use rdev::{listen, Event, EventType}; // , simulate};
+use rdev::{listen, Event, EventType, simulate, Button};
 use std::time::{SystemTime, Duration};
+use std::thread;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 pub struct RingBuffer {
     idx: usize,
@@ -19,11 +22,30 @@ impl RingBuffer {
 }
 
 fn main() {
+    let send_clicks = Arc::new(AtomicBool::new(false));
+    let send_clicks_start = send_clicks.clone();
+    thread::spawn(move || {
+        let sleep_time = Duration::from_millis(100);
+        let mut i: u64 = 0;
+        loop {
+            thread::sleep(sleep_time);
+            i += 1;
+            if send_clicks.load(Ordering::Relaxed) {
+                println!("Click {}", i);
+                match simulate(&EventType::ButtonPress(Button::Left)) {
+                    Ok(()) => (),
+                    Err(_) => {
+                        println!("We could not send Left Button press");
+                    }
+                }
+            }
+        }
+    });
+
     let mut switch_on = RingBuffer::new();
     let mut switch_off = RingBuffer::new();
     let one_second = Duration::new(1, 0);
     let callback = move |event: Event| {
-        // println!("My callback {:?}", event);
         match event.event_type {
             EventType::KeyPress(_) => {
                 if let Some(key) = event.name {
@@ -32,6 +54,7 @@ fn main() {
                         println!("User pressed {:?} -- {:?}", key, oldest);
                         if oldest <= one_second {
                             println!("  SWITCH ON");
+                            send_clicks_start.store(true, Ordering::Relaxed);
                         }
                     }
                     if key == "d" {
@@ -39,6 +62,7 @@ fn main() {
                         println!("User pressed {:?} -- {:?}", key, oldest);
                         if oldest <= one_second {
                             println!("  SWITCH OFF");
+                            send_clicks_start.store(false, Ordering::Relaxed);
                         }
                     }
                 }
@@ -51,19 +75,3 @@ fn main() {
         println!("Error: {:?}", error)
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::{RingBuffer};
-//
-//     #[test]
-//     fn sample1() {
-//         let mut buff = RingBuffer::new();
-//         buff.insert(1);
-//         buff.insert(3);
-//         buff.insert(5);
-//         buff.insert(7);
-//         buff.insert(9);
-//         assert_eq!(buff.oldest(), 3);
-//     }
-// }
