@@ -1,0 +1,10 @@
+[package]
+name = "autoclick"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# https://github.com/Narsil/rdev
+rdev = "*"
+# https://docs.rs/enigo/latest/enigo/
+enigo = "*"
