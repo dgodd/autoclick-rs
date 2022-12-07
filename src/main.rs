@@ -3,6 +3,7 @@ use std::time::{SystemTime, Duration};
 use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use sysbar;
 
 pub struct RingBuffer {
     idx: usize,
@@ -42,36 +43,42 @@ fn main() {
         }
     });
 
-    let mut switch_on = RingBuffer::new();
-    let mut switch_off = RingBuffer::new();
-    let one_second = Duration::new(1, 0);
-    let callback = move |event: Event| {
-        match event.event_type {
-            EventType::KeyPress(_) => {
-                if let Some(key) = event.name {
-                    if key == "c" {
-                        let oldest = switch_on.add();
-                        println!("User pressed {:?} -- {:?}", key, oldest);
-                        if oldest <= one_second {
-                            println!("  SWITCH ON");
-                            send_clicks_start.store(true, Ordering::Relaxed);
+    thread::spawn(move || {
+        let mut switch_on = RingBuffer::new();
+        let mut switch_off = RingBuffer::new();
+        let one_second = Duration::new(1, 0);
+        let callback = move |event: Event| {
+            match event.event_type {
+                EventType::KeyPress(_) => {
+                    if let Some(key) = event.name {
+                        if key == "c" {
+                            let oldest = switch_on.add();
+                            println!("User pressed {:?} -- {:?}", key, oldest);
+                            if oldest <= one_second {
+                                println!("  SWITCH ON");
+                                send_clicks_start.store(true, Ordering::Relaxed);
+                            }
+                        }
+                        if key == "d" {
+                            let oldest = switch_off.add();
+                            println!("User pressed {:?} -- {:?}", key, oldest);
+                            if oldest <= one_second {
+                                println!("  SWITCH OFF");
+                                send_clicks_start.store(false, Ordering::Relaxed);
+                            }
                         }
                     }
-                    if key == "d" {
-                        let oldest = switch_off.add();
-                        println!("User pressed {:?} -- {:?}", key, oldest);
-                        if oldest <= one_second {
-                            println!("  SWITCH OFF");
-                            send_clicks_start.store(false, Ordering::Relaxed);
-                        }
-                    }
-                }
-            },
-            _ => (),
-        }
-    };
+                },
+                _ => (),
+            }
+        };
 
-    if let Err(error) = listen(callback) {
-        println!("Error: {:?}", error)
-    }
+        if let Err(error) = listen(callback) {
+            println!("Error: {:?}", error)
+        }
+    });
+
+    let mut bar = sysbar::Sysbar::new("Autoclick");
+    bar.add_quit_item("Quit");
+    bar.display();
 }

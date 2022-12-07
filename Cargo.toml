@@ -6,5 +6,5 @@ edition = "2021"
 [dependencies]
 # https://github.com/Narsil/rdev
 rdev = "*"
-# https://docs.rs/enigo/latest/enigo/
-enigo = "*"
+# https://github.com/rust-sysbar/rust-sysbar/blob/master/examples/simple.rs
+sysbar = "*"
